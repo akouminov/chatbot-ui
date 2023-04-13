@@ -179,10 +179,16 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
             } else {
               const updatedMessages: Message[] =
                 updatedConversation.messages.map((message, index) => {
+                  let answer_dict = {"key1": "value1",
+                    "key2": "value2",
+                    "keyn": "valuen",
+                };
                   if (index === updatedConversation.messages.length - 1) {
+                    console.log(updateConversation.messages);
+                    console.log(updateConversation.prompt);
                     return {
                       ...message,
-                      content: "lol",
+                      content: answer_dict[updateConversation.prompt],
                     };
                   }
                   return message;
