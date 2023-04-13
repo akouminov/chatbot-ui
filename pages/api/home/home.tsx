@@ -44,12 +44,14 @@ interface Props {
   serverSideApiKeyIsSet: boolean;
   serverSidePluginKeysSet: boolean;
   defaultModelId: OpenAIModelID;
+  offlineMode: string;
 }
 
 const Home = ({
   serverSideApiKeyIsSet,
   serverSidePluginKeysSet,
   defaultModelId,
+  offlineMode,
 }: Props) => {
   const { t } = useTranslation('chat');
   const { getModels } = useApiService();
@@ -244,7 +246,14 @@ const Home = ({
         field: 'serverSidePluginKeysSet',
         value: serverSidePluginKeysSet,
       });
-  }, [defaultModelId, serverSideApiKeyIsSet, serverSidePluginKeysSet]);
+
+    offlineMode &&
+     dispatch({
+       field: 'offlineMode',
+        value: offlineMode
+      });
+
+  }, [defaultModelId, serverSideApiKeyIsSet, serverSidePluginKeysSet, offlineMode]);
 
   // ON LOAD --------------------------------------------
 
@@ -352,7 +361,7 @@ const Home = ({
       }}
     >
       <Head>
-        <title>Chatbot UI</title>
+        <title>Travel.ai</title>
         <meta name="description" content="ChatGPT but better." />
         <meta
           name="viewport"
@@ -401,6 +410,8 @@ export const getServerSideProps: GetServerSideProps = async ({ locale }) => {
   const googleApiKey = process.env.GOOGLE_API_KEY;
   const googleCSEId = process.env.GOOGLE_CSE_ID;
 
+  const offlineMode = process.env.OFFLINE_MODE;
+
   if (googleApiKey && googleCSEId) {
     serverSidePluginKeysSet = true;
   }
@@ -408,6 +419,7 @@ export const getServerSideProps: GetServerSideProps = async ({ locale }) => {
   return {
     props: {
       serverSideApiKeyIsSet: !!process.env.OPENAI_API_KEY,
+      offlineMode,
       defaultModelId,
       serverSidePluginKeysSet,
       ...(await serverSideTranslations(locale ?? 'en', [

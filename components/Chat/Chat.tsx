@@ -52,6 +52,7 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
       modelError,
       loading,
       prompts,
+      offlineMode,
     },
     handleUpdateConversation,
     dispatch: homeDispatch,
@@ -66,7 +67,8 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
+  console.log(models);
+  console.log(offlineMode);
   const handleSend = useCallback(
     async (message: Message, deleteCount = 0, plugin: Plugin | null = null) => {
       if (selectedConversation) {
@@ -180,7 +182,7 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
                   if (index === updatedConversation.messages.length - 1) {
                     return {
                       ...message,
-                      content: text,
+                      content: "lol",
                     };
                   }
                   return message;
@@ -350,7 +352,7 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
       {!(apiKey || serverSideApiKeyIsSet) ? (
         <div className="mx-auto flex h-full w-[300px] flex-col justify-center space-y-6 sm:w-[600px]">
           <div className="text-center text-4xl font-bold text-black dark:text-white">
-            Welcome to Chatbot UI
+            Welcome to Travel.ai
           </div>
           <div className="text-center text-lg text-black dark:text-white">
             <div className="mb-8">{`Chatbot UI is an open source clone of OpenAI's ChatGPT UI.`}</div>
@@ -403,7 +405,7 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
                         <Spinner size="16px" className="mx-auto" />
                       </div>
                     ) : (
-                      'Chatbot UI'
+                      'Travel.ai'
                     )}
                   </div>
 
@@ -472,6 +474,7 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
             stopConversationRef={stopConversationRef}
             textareaRef={textareaRef}
             onSend={(message, plugin) => {
+              console.log("test");
               setCurrentMessage(message);
               handleSend(message, 0, plugin);
             }}
