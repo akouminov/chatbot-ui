@@ -164,6 +164,7 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
             text += chunkValue;
             if (isFirst) {
               isFirst = false;
+              // first chunk is populated here
               const updatedMessages: Message[] = [
                 ...updatedConversation.messages,
                 { role: 'assistant', content: chunkValue },
@@ -197,6 +198,8 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
                 ...updatedConversation,
                 messages: updatedMessages,
               };
+              debugger;
+              // this is where conversations are updated from chat GPT
               homeDispatch({
                 field: 'selectedConversation',
                 value: updatedConversation,
@@ -220,6 +223,7 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
           homeDispatch({ field: 'messageIsStreaming', value: false });
         } else {
           const { answer } = await response.json();
+          // assistant is here too, not sure why will need to investigate
           const updatedMessages: Message[] = [
             ...updatedConversation.messages,
             { role: 'assistant', content: answer },
