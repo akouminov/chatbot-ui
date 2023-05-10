@@ -117,7 +117,7 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
           createActivity("Arrive on 8/27", "test");
           handleUpdateFolder("orleans", "New Orleans: 8/27 -")
         } else if (count === 2){
-          textContent = "Of course! Here is are some recommendations for dinner!\n hi"
+          textContent = "Of course! Here is are some recommendations for dinner!"
         }
         else {
           textContent = 'end of demo! Reload to restart!';
@@ -130,14 +130,20 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
                   ...updatedConversation,
                   messages: updatedMessages,
                 };
-        homeDispatch({
-          field: 'selectedConversation',
-          value: updatedConversation,
-        });
-        homeDispatch({ field: 'loading', value: false });
+        setTimeout(() => {
+          homeDispatch({
+            field: 'selectedConversation',
+            value: updatedConversation,
+          });
+          homeDispatch({ field: 'loading', value: false });
+          console.log('This will run after 1 second!');
+        }, 1000);
+
+        
         if(!count){
           handleCreateFolder("New Orleans", 'prompt', 'orleans');
         }
+
         count = count + 1;
       }
     },
