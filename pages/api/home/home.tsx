@@ -111,9 +111,15 @@ const Home = ({
 
   // FOLDER OPERATIONS  --------------------------------------------
 
-  const handleCreateFolder = (name: string, type: FolderType) => {
+  const handleCreateFolder = (name: string, type: FolderType, id?: string) => {
+    let folderID;
+    if(id){
+      folderID = id;
+    }else{
+      folderID = uuidv4();
+    }
     const newFolder: FolderInterface = {
-      id: uuidv4(),
+      id: folderID,
       name,
       type,
     };
@@ -352,7 +358,7 @@ const Home = ({
       }}
     >
       <Head>
-        <title>Chatbot UI</title>
+        <title>Travel.ai</title>
         <meta name="description" content="ChatGPT but better." />
         <meta
           name="viewport"
@@ -372,7 +378,6 @@ const Home = ({
           </div>
 
           <div className="flex h-full w-full pt-[48px] sm:pt-0">
-            <Chatbar />
 
             <div className="flex flex-1">
               <Chat stopConversationRef={stopConversationRef} />

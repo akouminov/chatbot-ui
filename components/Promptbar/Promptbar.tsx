@@ -20,6 +20,8 @@ import { PromptbarInitialState, initialState } from './Promptbar.state';
 
 import { v4 as uuidv4 } from 'uuid';
 
+let promptCount = 0;
+
 const Promptbar = () => {
   const { t } = useTranslation('promptbar');
 
@@ -47,12 +49,15 @@ const Promptbar = () => {
     if (defaultModelId) {
       const newPrompt: Prompt = {
         id: uuidv4(),
-        name: `Prompt ${prompts.length + 1}`,
+        name: `Activity ${prompts.length + 1}`,
         description: '',
         content: '',
         model: OpenAIModels[defaultModelId],
         folderId: null,
+        order: promptCount,
       };
+
+      promptCount = promptCount + 1;
 
       const updatedPrompts = [...prompts, newPrompt];
 
@@ -128,7 +133,7 @@ const Promptbar = () => {
       <Sidebar<Prompt>
         side={'right'}
         isOpen={showPromptbar}
-        addItemButtonTitle={t('New prompt')}
+        addItemButtonTitle={t('New Activity')}
         itemComponent={
           <Prompts
             prompts={filteredPrompts.filter((prompt) => !prompt.folderId)}
@@ -142,7 +147,7 @@ const Promptbar = () => {
         }
         toggleOpen={handleTogglePromptbar}
         handleCreateItem={handleCreatePrompt}
-        handleCreateFolder={() => handleCreateFolder(t('New folder'), 'prompt')}
+        handleCreateFolder={() => handleCreateFolder(t('New intinerary'), 'prompt')}
         handleDrop={handleDrop}
       />
     </PromptbarContext.Provider>

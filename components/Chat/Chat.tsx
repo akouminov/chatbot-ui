@@ -10,6 +10,8 @@ import {
 } from 'react';
 import toast from 'react-hot-toast';
 
+import { savePrompts } from '@/utils/app/prompts';
+
 import { useTranslation } from 'next-i18next';
 
 import { getEndpoint } from '@/utils/app/api';
@@ -32,10 +34,16 @@ import { ChatMessage } from './ChatMessage';
 import { ErrorMessageDiv } from './ErrorMessageDiv';
 import { ModelSelect } from './ModelSelect';
 import { SystemPrompt } from './SystemPrompt';
+import { Prompt } from '@/types/prompt';
+import { v4 as uuidv4 } from 'uuid';
+import { OpenAIModels } from '@/types/openai';
+import { FolderType } from '@/types/folder';
 
 interface Props {
   stopConversationRef: MutableRefObject<boolean>;
 }
+
+let count = 0;
 
 export const Chat = memo(({ stopConversationRef }: Props) => {
   const { t } = useTranslation('chat');
@@ -52,8 +60,11 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
       modelError,
       loading,
       prompts,
+      defaultModelId,
     },
     handleUpdateConversation,
+    handleCreateFolder,
+    handleUpdateFolder,
     dispatch: homeDispatch,
   } = useContext(HomeContext);
 
@@ -81,9 +92,16 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
             messages: [...updatedMessages, message],
           };
         } else {
+          let messageWUser;
+          if(count === 0){
+            messageWUser =  [...selectedConversation.messages,
+               { role: 'assistant', content: "Where would you like to go?" }, message];
+          } else {
+            messageWUser = [...selectedConversation.messages, message];
+          }
           updatedConversation = {
             ...selectedConversation,
-            messages: [...selectedConversation.messages, message],
+            messages: messageWUser,
           };
         }
         homeDispatch({
@@ -91,160 +109,36 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
           value: updatedConversation,
         });
         homeDispatch({ field: 'loading', value: true });
-        homeDispatch({ field: 'messageIsStreaming', value: true });
-        const chatBody: ChatBody = {
-          model: updatedConversation.model,
-          messages: updatedConversation.messages,
-          key: apiKey,
-          prompt: updatedConversation.prompt,
-        };
-        const endpoint = getEndpoint(plugin);
-        let body;
-        if (!plugin) {
-          body = JSON.stringify(chatBody);
-        } else {
-          body = JSON.stringify({
-            ...chatBody,
-            googleAPIKey: pluginKeys
-              .find((key) => key.pluginId === 'google-search')
-              ?.requiredKeys.find((key) => key.key === 'GOOGLE_API_KEY')?.value,
-            googleCSEId: pluginKeys
-              .find((key) => key.pluginId === 'google-search')
-              ?.requiredKeys.find((key) => key.key === 'GOOGLE_CSE_ID')?.value,
-          });
+        let textContent;
+        if(count === 0){
+          textContent = "New Orleans is a great destination! When would you like to go?"
+        } else if (count === 1){
+          textContent = "Great time to go! I am adding it to your itinerary on the right sidebar!"
+          createActivity("Arrive on 8/27", "test");
+          handleUpdateFolder("orleans", "New Orleans: 8/27 -")
+        } else if (count === 2){
+          textContent = "Of course! Here is are some recommendations for dinner!\n hi"
         }
-        const controller = new AbortController();
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          signal: controller.signal,
-          body,
+        else {
+          textContent = 'end of demo! Reload to restart!';
+        }
+        const updatedMessages: Message[] = [
+                  ...updatedConversation.messages,
+                  { role: 'assistant', content: textContent },
+                ];
+        updatedConversation = {
+                  ...updatedConversation,
+                  messages: updatedMessages,
+                };
+        homeDispatch({
+          field: 'selectedConversation',
+          value: updatedConversation,
         });
-        if (!response.ok) {
-          homeDispatch({ field: 'loading', value: false });
-          homeDispatch({ field: 'messageIsStreaming', value: false });
-          toast.error(response.statusText);
-          return;
+        homeDispatch({ field: 'loading', value: false });
+        if(!count){
+          handleCreateFolder("New Orleans", 'prompt', 'orleans');
         }
-        const data = response.body;
-        if (!data) {
-          homeDispatch({ field: 'loading', value: false });
-          homeDispatch({ field: 'messageIsStreaming', value: false });
-          return;
-        }
-        if (!plugin) {
-          if (updatedConversation.messages.length === 1) {
-            const { content } = message;
-            const customName =
-              content.length > 30 ? content.substring(0, 30) + '...' : content;
-            updatedConversation = {
-              ...updatedConversation,
-              name: customName,
-            };
-          }
-          homeDispatch({ field: 'loading', value: false });
-          const reader = data.getReader();
-          const decoder = new TextDecoder();
-          let done = false;
-          let isFirst = true;
-          let text = '';
-          while (!done) {
-            if (stopConversationRef.current === true) {
-              controller.abort();
-              done = true;
-              break;
-            }
-            const { value, done: doneReading } = await reader.read();
-            done = doneReading;
-            const chunkValue = decoder.decode(value);
-            text += chunkValue;
-            if (isFirst) {
-              isFirst = false;
-              // first chunk is populated here
-              const updatedMessages: Message[] = [
-                ...updatedConversation.messages,
-                { role: 'assistant', content: chunkValue },
-              ];
-              updatedConversation = {
-                ...updatedConversation,
-                messages: updatedMessages,
-              };
-              homeDispatch({
-                field: 'selectedConversation',
-                value: updatedConversation,
-              });
-            } else {
-              const updatedMessages: Message[] =
-                updatedConversation.messages.map((message, index) => {
-                  if (index === updatedConversation.messages.length - 1) {
-                    return {
-                      ...message,
-                      content: text,
-                    };
-                  }
-                  return message;
-                });
-              updatedConversation = {
-                ...updatedConversation,
-                messages: updatedMessages,
-              };
-              debugger;
-              // this is where conversations are updated from chat GPT
-              homeDispatch({
-                field: 'selectedConversation',
-                value: updatedConversation,
-              });
-            }
-          }
-          saveConversation(updatedConversation);
-          const updatedConversations: Conversation[] = conversations.map(
-            (conversation) => {
-              if (conversation.id === selectedConversation.id) {
-                return updatedConversation;
-              }
-              return conversation;
-            },
-          );
-          if (updatedConversations.length === 0) {
-            updatedConversations.push(updatedConversation);
-          }
-          homeDispatch({ field: 'conversations', value: updatedConversations });
-          saveConversations(updatedConversations);
-          homeDispatch({ field: 'messageIsStreaming', value: false });
-        } else {
-          const { answer } = await response.json();
-          // assistant is here too, not sure why will need to investigate
-          const updatedMessages: Message[] = [
-            ...updatedConversation.messages,
-            { role: 'assistant', content: answer },
-          ];
-          updatedConversation = {
-            ...updatedConversation,
-            messages: updatedMessages,
-          };
-          homeDispatch({
-            field: 'selectedConversation',
-            value: updateConversation,
-          });
-          saveConversation(updatedConversation);
-          const updatedConversations: Conversation[] = conversations.map(
-            (conversation) => {
-              if (conversation.id === selectedConversation.id) {
-                return updatedConversation;
-              }
-              return conversation;
-            },
-          );
-          if (updatedConversations.length === 0) {
-            updatedConversations.push(updatedConversation);
-          }
-          homeDispatch({ field: 'conversations', value: updatedConversations });
-          saveConversations(updatedConversations);
-          homeDispatch({ field: 'loading', value: false });
-          homeDispatch({ field: 'messageIsStreaming', value: false });
-        }
+        count = count + 1;
       }
     },
     [
@@ -255,6 +149,39 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
       stopConversationRef,
     ],
   );
+
+  const updateActivity = (prompt: Prompt) => {
+    const updatedPrompts = prompts.map((p) => {
+      if (p.id === prompt.id) {
+        return prompt;
+      }
+
+      return p;
+    });
+
+    homeDispatch({ field: 'prompts', value: updatedPrompts });
+
+    savePrompts(updatedPrompts)
+  }
+
+  const createActivity = (name?: string, id?: string) => {
+    if (defaultModelId) {
+      const newPrompt: Prompt = {
+        id: id ? id : uuidv4(),
+        name: name ? name : `Activity ${prompts.length + 1}`,
+        description: '',
+        content: '',
+        model: OpenAIModels[defaultModelId],
+        folderId: 'orleans',
+      };
+
+      const updatedPrompts = [...prompts, newPrompt];
+
+      homeDispatch({ field: 'prompts', value: updatedPrompts });
+
+      savePrompts(updatedPrompts)
+    }
+  }
 
   const scrollToBottom = useCallback(() => {
     if (autoScrollEnabled) {
@@ -407,26 +334,19 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
                         <Spinner size="16px" className="mx-auto" />
                       </div>
                     ) : (
-                      'Chatbot UI'
+                      'Travel.ai'
                     )}
                   </div>
 
                   {models.length > 0 && (
                     <div className="flex h-full flex-col space-y-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-600">
                       <ModelSelect />
-
-                      <SystemPrompt
-                        conversation={selectedConversation}
-                        prompts={prompts}
-                        onChangePrompt={(prompt) =>
-                          handleUpdateConversation(selectedConversation, {
-                            key: 'prompt',
-                            value: prompt,
-                          })
-                        }
-                      />
                     </div>
                   )}
+
+                   <div className="text-center text-xl font-semibold text-gray-800 dark:text-gray-100">
+                      Where would you like to go?
+                    </div>
                 </div>
               </>
             ) : (

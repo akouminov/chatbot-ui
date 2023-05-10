@@ -321,7 +321,7 @@ export const ChatInput = ({
               }`,
             }}
             placeholder={
-              t('Type a message or type "/" to select a prompt...') || ''
+              t('Type a message...') || ''
             }
             value={content}
             rows={1}
@@ -372,11 +372,11 @@ export const ChatInput = ({
           rel="noreferrer"
           className="underline"
         >
-          ChatBot UI
+          Travel.ai
         </a>
         .{' '}
         {t(
-          "Chatbot UI is an advanced chatbot kit for OpenAI's chat models aiming to mimic ChatGPT's interface and functionality.",
+          "Travel AI is a demo to show the capabilities of an AI model integrated in Travel bookings",
         )}
       </div>
     </div>

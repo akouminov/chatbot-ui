@@ -67,6 +67,24 @@ export const PromptComponent = ({ prompt }: Props) => {
     }
   };
 
+  const handleDragDrop = (e: DragEvent<HTMLButtonElement>, prompt: Prompt) => {
+    if (e.dataTransfer) {
+      const draggedPrompt = JSON.parse(e.dataTransfer.getData('prompt'));
+      const currentPromptOrder = prompt.order;
+      const draggedPromptOrder = draggedPrompt.order;
+      const updatedPrompt = {
+        ...prompt,
+        order: draggedPromptOrder,
+      };
+      handleUpdatePrompt(updatedPrompt);
+      const draggedUpdatedPrompt = {
+        ...draggedPrompt,
+        order: currentPromptOrder,
+      }
+      handleUpdatePrompt(draggedUpdatedPrompt);
+    }
+  };
+
   useEffect(() => {
     if (isRenaming) {
       setIsDeleting(false);
@@ -84,6 +102,7 @@ export const PromptComponent = ({ prompt }: Props) => {
           e.stopPropagation();
           setShowModal(true);
         }}
+        onDrop = {(e)=>{handleDragDrop(e, prompt)}}
         onDragStart={(e) => handleDragStart(e, prompt)}
         onMouseLeave={() => {
           setIsDeleting(false);
