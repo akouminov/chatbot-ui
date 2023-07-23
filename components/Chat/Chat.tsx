@@ -1,4 +1,4 @@
-import { IconArrowDown, IconClearAll, IconSettings } from '@tabler/icons-react';
+import { IconClearAll, IconSettings } from '@tabler/icons-react';
 import {
   MutableRefObject,
   memo,
@@ -30,14 +30,11 @@ import HomeContext from '@/pages/api/home/home.context';
 import Spinner from '../Spinner';
 import { ChatInput } from './ChatInput';
 import { ChatLoader } from './ChatLoader';
-import { ChatMessage } from './ChatMessage';
 import { ErrorMessageDiv } from './ErrorMessageDiv';
 import { ModelSelect } from './ModelSelect';
 import { SystemPrompt } from './SystemPrompt';
-import { Prompt } from '@/types/prompt';
-import { v4 as uuidv4 } from 'uuid';
-import { OpenAIModels } from '@/types/openai';
-import { FolderType } from '@/types/folder';
+import { TemperatureSlider } from './Temperature';
+import { MemoizedChatMessage } from './MemoizedChatMessage';
 
 interface Props {
   stopConversationRef: MutableRefObject<boolean>;
@@ -110,32 +107,27 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
         });
         homeDispatch({ field: 'loading', value: true });
         homeDispatch({ field: 'messageIsStreaming', value: true });
-        let textContent;
-        if(count === 0){
-          textContent = "New Orleans is a great destination! When would you like to go?"
-        } else if (count === 1){
-          textContent = "Great time to go! I am adding it to your itinerary on the right sidebar!"
-          createActivity("Arrive on 8/27", "test");
-          createActivity("Return on 9/2", "test1");
-          handleUpdateFolder("orleans", "New Orleans: 8/27 - 9/2")
-        } else if (count === 2){
-          textContent = "Here are some flight options!" +
-           "\n\nFlight 1: American Airlines," +
-           " 11:15am - $365\n\nFlight 2:" +
-           "American Airlines, 1:00pm - $300\n\nFlight 3: Delta, 11:00am, - $215";
-        } else if (count === 3) {
-          textContent = "Great Choice! I will add it to the itinerary! \n\n Here are some options for the return flight on 9/2! \n\n" +
-           "Flight 1: American Airlines, 12:15pm - $215\n\nFlight 2: Delta, 8am - $135\n\nFlight 3: United, 8pm - $275";
-          updateActivity("AA flight at 11:15pm", "test1");
-          createActivity("AA flight arrives at 12:30pm", "test2");
-          createActivity("Return on 9/2", "test3");
-        } else if (count === 4){
-          textContent = "Awesome! \n\nWould you like some recommendations for things to do?";
-         updateActivity("AA flight at 12:15pm", "test3");
-         createActivity("AA flight arrives at 1:30pm", "test4");
-         createActivity("Return on 9/2", "test5");
-        } else if (count === 5){
-          textContent = "";
+        const chatBody: ChatBody = {
+          model: updatedConversation.model,
+          messages: updatedConversation.messages,
+          key: apiKey,
+          prompt: updatedConversation.prompt,
+          temperature: updatedConversation.temperature,
+        };
+        const endpoint = getEndpoint(plugin);
+        let body;
+        if (!plugin) {
+          body = JSON.stringify(chatBody);
+        } else {
+          body = JSON.stringify({
+            ...chatBody,
+            googleAPIKey: pluginKeys
+              .find((key) => key.pluginId === 'google-search')
+              ?.requiredKeys.find((key) => key.key === 'GOOGLE_API_KEY')?.value,
+            googleCSEId: pluginKeys
+              .find((key) => key.pluginId === 'google-search')
+              ?.requiredKeys.find((key) => key.key === 'GOOGLE_CSE_ID')?.value,
+          });
         }
         else {
           textContent = 'end of demo! Reload to restart!';
@@ -353,7 +345,7 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
           >
             {selectedConversation?.messages.length === 0 ? (
               <>
-                <div className="mx-auto flex w-[350px] flex-col space-y-10 pt-12 sm:w-[600px]">
+                <div className="mx-auto flex flex-col space-y-5 md:space-y-10 px-3 pt-5 md:pt-12 sm:max-w-[600px]">
                   <div className="text-center text-3xl font-semibold text-gray-800 dark:text-gray-100">
                     {models.length === 0 ? (
                       <div>
@@ -367,6 +359,27 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
                   {models.length > 0 && (
                     <div className="flex h-full flex-col space-y-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-600">
                       <ModelSelect />
+
+                      <SystemPrompt
+                        conversation={selectedConversation}
+                        prompts={prompts}
+                        onChangePrompt={(prompt) =>
+                          handleUpdateConversation(selectedConversation, {
+                            key: 'prompt',
+                            value: prompt,
+                          })
+                        }
+                      />
+
+                      <TemperatureSlider
+                        label={t('Temperature')}
+                        onChangeTemperature={(temperature) =>
+                          handleUpdateConversation(selectedConversation, {
+                            key: 'temperature',
+                            value: temperature,
+                          })
+                        }
+                      />
                     </div>
                   )}
 
@@ -377,8 +390,9 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
               </>
             ) : (
               <>
-                <div className="flex justify-center border border-b-neutral-300 bg-neutral-100 py-2 text-sm text-neutral-500 dark:border-none dark:bg-[#444654] dark:text-neutral-200">
-                  {t('Model')}: {selectedConversation?.model.name}
+                <div className="sticky top-0 z-10 flex justify-center border border-b-neutral-300 bg-neutral-100 py-2 text-sm text-neutral-500 dark:border-none dark:bg-[#444654] dark:text-neutral-200">
+                  {t('Model')}: {selectedConversation?.model.name} | {t('Temp')}
+                  : {selectedConversation?.temperature} |
                   <button
                     className="ml-2 cursor-pointer hover:opacity-50"
                     onClick={handleSettings}
@@ -401,10 +415,18 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
                 )}
 
                 {selectedConversation?.messages.map((message, index) => (
-                  <ChatMessage
+                  <MemoizedChatMessage
                     key={index}
                     message={message}
                     messageIndex={index}
+                    onEdit={(editedMessage) => {
+                      setCurrentMessage(editedMessage);
+                      // discard edited message and the ones that come after then resend
+                      handleSend(
+                        editedMessage,
+                        selectedConversation?.messages.length - index,
+                      );
+                    }}
                   />
                 ))}
 
@@ -425,23 +447,15 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
               setCurrentMessage(message);
               handleSend(message, 0, plugin);
             }}
+            onScrollDownClick={handleScrollDown}
             onRegenerate={() => {
               if (currentMessage) {
                 handleSend(currentMessage, 2, null);
               }
             }}
+            showScrollDownButton={showScrollDownButton}
           />
         </>
-      )}
-      {showScrollDownButton && (
-        <div className="absolute bottom-0 right-0 mb-4 mr-4 pb-20">
-          <button
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-300 text-gray-800 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-neutral-200"
-            onClick={handleScrollDown}
-          >
-            <IconArrowDown size={18} />
-          </button>
-        </div>
       )}
     </div>
   );
