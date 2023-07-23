@@ -109,15 +109,33 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
           value: updatedConversation,
         });
         homeDispatch({ field: 'loading', value: true });
+        homeDispatch({ field: 'messageIsStreaming', value: true });
         let textContent;
         if(count === 0){
           textContent = "New Orleans is a great destination! When would you like to go?"
         } else if (count === 1){
           textContent = "Great time to go! I am adding it to your itinerary on the right sidebar!"
           createActivity("Arrive on 8/27", "test");
-          handleUpdateFolder("orleans", "New Orleans: 8/27 -")
+          createActivity("Return on 9/2", "test1");
+          handleUpdateFolder("orleans", "New Orleans: 8/27 - 9/2")
         } else if (count === 2){
-          textContent = "Of course! Here is are some recommendations for dinner!"
+          textContent = "Here are some flight options!" +
+           "\n\nFlight 1: American Airlines," +
+           " 11:15am - $365\n\nFlight 2:" +
+           "American Airlines, 1:00pm - $300\n\nFlight 3: Delta, 11:00am, - $215";
+        } else if (count === 3) {
+          textContent = "Great Choice! I will add it to the itinerary! \n\n Here are some options for the return flight on 9/2! \n\n" +
+           "Flight 1: American Airlines, 12:15pm - $215\n\nFlight 2: Delta, 8am - $135\n\nFlight 3: United, 8pm - $275";
+          updateActivity("AA flight at 11:15pm", "test1");
+          createActivity("AA flight arrives at 12:30pm", "test2");
+          createActivity("Return on 9/2", "test3");
+        } else if (count === 4){
+          textContent = "Awesome! \n\nWould you like some recommendations for things to do?";
+         updateActivity("AA flight at 12:15pm", "test3");
+         createActivity("AA flight arrives at 1:30pm", "test4");
+         createActivity("Return on 9/2", "test5");
+        } else if (count === 5){
+          textContent = "";
         }
         else {
           textContent = 'end of demo! Reload to restart!';
@@ -132,10 +150,11 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
                 };
         setTimeout(() => {
           homeDispatch({
-            field: 'selectedConversation',
+            field: 'selectedConversation', 
             value: updatedConversation,
           });
           homeDispatch({ field: 'loading', value: false });
+          homeDispatch({ field: 'messageIsStreaming', value: false });
           console.log('This will run after 1 second!');
         }, 1000);
 
@@ -156,10 +175,11 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
     ],
   );
 
-  const updateActivity = (prompt: Prompt) => {
-    const updatedPrompts = prompts.map((p) => {
-      if (p.id === prompt.id) {
-        return prompt;
+  const updateActivity = (name: string, prompt_id: string) => {
+    const updatedPrompts = prompts.map((p: Prompt) => {
+      if (p.id === prompt_id) {
+        p.name = name;
+        return p;
       }
 
       return p;
